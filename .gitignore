@@ -1,7 +1,10 @@
 # =========================
-# Outputs
+# Generated outputs
 # =========================
+output/*.db
 output/*.parquet
+output/*.csv
+output/*.json
 
 # =========================
 # Python
