@@ -1,30 +1,47 @@
-# %%
 """
-LOAD LAYER (Notebook-style): CSV artifacts -> SQLite (output/ecommerce.db)
+===============================================================================
+LOAD LAYER
+===============================================================================
 
 Propósito:
-- Crear un modelo relacional simple en SQLite.
-- Cargar dim_users y fact_transactions generadas por transform.py.
-- Ejecutar la query obligatoria: Top 3 usuarios por gasto total + país.
+-----------
+Persistir en SQLite el modelo relacional (dim/fact) generado por transform.py
+y ejecutar la consulta obligatoria (Top 3 usuarios por gasto total + país).
 
 Entradas:
+---------
 - output/dim_users.csv
 - output/fact_transactions.csv
 
-Salida:
+Salidas:
+--------
 - output/ecommerce.db (SQLite)
-- prints con conteos + Top 3 result
+- Prints con conteos + Top 3 result
+
+Qué hace:
+---------
+1) Carga artefactos CSV.
+2) Crea/conecta a SQLite (output/ecommerce.db).
+3) FULL REFRESH: dropea y recrea tablas.
+4) Inserta dim_users y fact_transactions.
+5) Valida conteos.
+6) Ejecuta query obligatoria (Top 3 por gasto), excluyendo amount NULL.
+7) Imprime rutas de artefactos generados.
 
 Notas:
-- En este reto usaremos FULL REFRESH: borra/crea tablas cada ejecución.
-- En análisis SQL, excluimos amount nulo (amount IS NOT NULL).
+------
+- SQLite no tiene tipo DATE real; guardamos fechas normalizadas como TEXT ISO (YYYY-MM-DD).
+- La lógica analítica (p.ej. excluir amount nulo) se aplica en la consulta SQL.
 """
 
-# %%
-# [CELDA 1] Imports + Paths
 import sqlite3
 import pandas as pd
 from pathlib import Path
+
+
+# =============================================================================
+# CONFIGURACIÓN DE PATHS
+# =============================================================================
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = BASE_DIR / "output"
@@ -34,129 +51,181 @@ DIM_USERS_CSV = OUTPUT_DIR / "dim_users.csv"
 FACT_TX_CSV = OUTPUT_DIR / "fact_transactions.csv"
 DB_PATH = OUTPUT_DIR / "ecommerce.db"
 
-print("DIM_USERS_CSV:", DIM_USERS_CSV)
-print("FACT_TX_CSV:", FACT_TX_CSV)
-print("DB_PATH:", DB_PATH)
 
-# %%
-# [CELDA 2] Cargar artefactos CSV (output)
-dim_users = pd.read_csv(DIM_USERS_CSV)
-fact_tx = pd.read_csv(FACT_TX_CSV)
+# =============================================================================
+# EXTRACT (desde artefactos)
+# =============================================================================
 
-print("dim_users shape:", dim_users.shape)
-print("fact_transactions shape:", fact_tx.shape)
+def load_artifacts() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Carga dim_users y fact_transactions desde output/.
+    """
+    dim_users = pd.read_csv(DIM_USERS_CSV)
+    fact_tx = pd.read_csv(FACT_TX_CSV)
+    return dim_users, fact_tx
 
-print("dim_users columns:", dim_users.columns.tolist())
-print("fact_transactions columns:", fact_tx.columns.tolist())
 
-# %%
-# [CELDA 3] Sanity checks rápidos
-print("dim_users user_id nulls:", int(dim_users["user_id"].isna().sum()))
-print("fact_tx transaction_id nulls:", int(fact_tx["transaction_id"].isna().sum()))
-print("fact_tx user_id nulls:", int(fact_tx["user_id"].isna().sum()))
+# =============================================================================
+# DB (conexión y schema)
+# =============================================================================
 
-print("fact_tx amount nulls:", int(fact_tx["amount"].isna().sum()))
-print("fact_tx date_status counts:\n", fact_tx["date_status"].value_counts())
+def connect_db() -> sqlite3.Connection:
+    """
+    Abre conexión a SQLite. Crea el archivo si no existe.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    return conn
 
-# %%
-# [CELDA 4] Conectar a SQLite (crea DB si no existe)
-conn = sqlite3.connect(DB_PATH)
-cur = conn.cursor()
-print("Connected to SQLite ✅")
 
-# %%
-# [CELDA 5] FULL REFRESH: drop tables (si existen)
-cur.executescript("""
-DROP TABLE IF EXISTS fact_transactions;
-DROP TABLE IF EXISTS dim_users;
-""")
-conn.commit()
-print("Dropped existing tables ✅")
+def full_refresh_schema(conn: sqlite3.Connection) -> None:
+    """
+    FULL REFRESH: elimina tablas existentes y recrea el esquema con PK/FK.
+    """
+    cur = conn.cursor()
+    cur.executescript("""
+    PRAGMA foreign_keys = ON;
 
-# %%
-# [CELDA 6] Crear esquema relacional (PK/FK)
-# Nota: SQLite aplica FK solo si PRAGMA foreign_keys = ON.
-cur.executescript("""
-PRAGMA foreign_keys = ON;
+    DROP TABLE IF EXISTS fact_transactions;
+    DROP TABLE IF EXISTS dim_users;
 
-CREATE TABLE dim_users (
-    user_id     INTEGER PRIMARY KEY,
-    user_name   TEXT,
-    country     TEXT,
-    email       TEXT,
-    signup_date TEXT
-);
+    CREATE TABLE dim_users (
+        user_id     INTEGER PRIMARY KEY,
+        user_name   TEXT,
+        country     TEXT,
+        email       TEXT,
+        signup_date TEXT
+    );
 
-CREATE TABLE fact_transactions (
-    transaction_id   TEXT PRIMARY KEY,
-    user_id          INTEGER,
-    product_category TEXT,
-    amount           REAL,
-    date_raw         TEXT,
-    transaction_date TEXT,
-    date_status      TEXT,
-    country          TEXT,
-    FOREIGN KEY (user_id) REFERENCES dim_users(user_id)
-);
-""")
-conn.commit()
-print("Created tables ✅")
+    CREATE TABLE fact_transactions (
+        transaction_id   TEXT PRIMARY KEY,
+        user_id          INTEGER,
+        product_category TEXT,
+        amount           REAL,
+        date_raw         TEXT,
+        transaction_date TEXT,
+        date_status      TEXT,
+        country          TEXT,
+        FOREIGN KEY (user_id) REFERENCES dim_users(user_id)
+    );
+    """)
+    conn.commit()
 
-# %%
-# [CELDA 7] Cargar dim_users a SQLite
-# Tip: aseguramos tipos compatibles con SQLite
-dim_users_sql = dim_users.copy()
-dim_users_sql["user_id"] = pd.to_numeric(dim_users_sql["user_id"], errors="coerce").astype("Int64")
-# signup_date ya viene como string en CSV; lo dejamos en TEXT
 
-dim_users_sql.to_sql("dim_users", conn, if_exists="append", index=False)
-print("Loaded dim_users ✅")
+# =============================================================================
+# LOAD (insertar datos)
+# =============================================================================
 
-# %%
-# [CELDA 8] Cargar fact_transactions a SQLite
-fact_sql = fact_tx.copy()
+def prepare_dim_users(dim_users: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ajusta tipos básicos para compatibilidad con SQLite (INTEGER/TEXT).
+    """
+    df = dim_users.copy()
+    df["user_id"] = pd.to_numeric(df["user_id"], errors="coerce").astype("Int64")
+    return df
 
-# Renombrar columnas para que coincidan con el schema
-fact_sql = fact_sql.rename(columns={"date": "date_raw"})
 
-# Asegurar tipos
-fact_sql["user_id"] = pd.to_numeric(fact_sql["user_id"], errors="coerce").astype("Int64")
-fact_sql["amount"] = pd.to_numeric(fact_sql["amount"], errors="coerce")
+def prepare_fact_transactions(fact_tx: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ajusta columnas para el schema y tipos básicos.
+    - Renombra date -> date_raw para conservar el campo original.
+    """
+    df = fact_tx.copy()
 
-fact_sql.to_sql("fact_transactions", conn, if_exists="append", index=False)
-print("Loaded fact_transactions ✅")
+    if "date" in df.columns and "date_raw" not in df.columns:
+        df = df.rename(columns={"date": "date_raw"})
 
-# %%
-# [CELDA 9] Validar conteos en DB (rows)
-dim_count = cur.execute("SELECT COUNT(*) FROM dim_users;").fetchone()[0]
-fact_count = cur.execute("SELECT COUNT(*) FROM fact_transactions;").fetchone()[0]
-print("DB dim_users rows:", dim_count)
-print("DB fact_transactions rows:", fact_count)
+    df["user_id"] = pd.to_numeric(df["user_id"], errors="coerce").astype("Int64")
+    df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
 
-# %%
-# [CELDA 10] Query obligatoria: Top 3 usuarios por gasto total + país
-# Importante: excluimos amount NULL
-query_top3 = """
-SELECT
-    u.user_id,
-    u.user_name,
-    u.country,
-    ROUND(SUM(f.amount), 2) AS total_spent
-FROM fact_transactions f
-JOIN dim_users u
-  ON f.user_id = u.user_id
-WHERE f.amount IS NOT NULL
-GROUP BY u.user_id, u.user_name, u.country
-ORDER BY total_spent DESC
-LIMIT 3;
-"""
+    return df
 
-top3 = pd.read_sql_query(query_top3, conn)
-print("\nTop 3 users by total spend:")
-print(top3)
 
-# %%
-# [CELDA 11] Cerrar conexión
-conn.close()
-print("\nSQLite DB ready ✅")
-print("DB path:", DB_PATH.resolve())
+def load_tables(conn: sqlite3.Connection, dim_users: pd.DataFrame, fact_tx: pd.DataFrame) -> None:
+    """
+    Inserta dim_users y fact_transactions en SQLite.
+    """
+    dim_users.to_sql("dim_users", conn, if_exists="append", index=False)
+    fact_tx.to_sql("fact_transactions", conn, if_exists="append", index=False)
+
+
+# =============================================================================
+# VALIDACIÓN (conteos)
+# =============================================================================
+
+def get_table_counts(conn: sqlite3.Connection) -> dict:
+    """
+    Devuelve conteos de filas por tabla.
+    """
+    cur = conn.cursor()
+    dim_count = cur.execute("SELECT COUNT(*) FROM dim_users;").fetchone()[0]
+    fact_count = cur.execute("SELECT COUNT(*) FROM fact_transactions;").fetchone()[0]
+    return {"dim_users": dim_count, "fact_transactions": fact_count}
+
+
+# =============================================================================
+# ANALYTICS (query obligatoria)
+# =============================================================================
+
+def query_top3_users(conn: sqlite3.Connection) -> pd.DataFrame:
+    """
+    Query obligatoria:
+    Top 3 usuarios con mayor gasto total + país.
+    Excluye amount nulo (amount IS NOT NULL).
+    """
+    sql = """
+    SELECT
+        u.user_id,
+        u.user_name,
+        u.country,
+        ROUND(SUM(f.amount), 2) AS total_spent
+    FROM fact_transactions f
+    JOIN dim_users u
+      ON f.user_id = u.user_id
+    WHERE f.amount IS NOT NULL
+    GROUP BY u.user_id, u.user_name, u.country
+    ORDER BY total_spent DESC
+    LIMIT 3;
+    """
+    return pd.read_sql_query(sql, conn)
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+def main() -> None:
+    print("=== LOAD LAYER START ===")
+    print("Artifacts:")
+    print(" -", DIM_USERS_CSV)
+    print(" -", FACT_TX_CSV)
+
+    dim_users, fact_tx = load_artifacts()
+    print(f"Loaded artifacts ✅ | dim_users={dim_users.shape} | fact_transactions={fact_tx.shape}")
+
+    conn = connect_db()
+    try:
+        full_refresh_schema(conn)
+        print("Schema FULL REFRESH ✅")
+
+        dim_users_sql = prepare_dim_users(dim_users)
+        fact_sql = prepare_fact_transactions(fact_tx)
+
+        load_tables(conn, dim_users_sql, fact_sql)
+        counts = get_table_counts(conn)
+        print("Loaded to SQLite ✅ | counts:", counts)
+
+        top3 = query_top3_users(conn)
+        print("\nTop 3 users by total spend (amount IS NOT NULL):")
+        print(top3)
+
+    finally:
+        conn.close()
+
+    print("\n=== LOAD LAYER COMPLETE ✅ ===")
+    print("Generated artifacts:")
+    print(" - ecommerce.db")
+    print("\nOutput path:", OUTPUT_DIR.resolve())
+
+
+if __name__ == "__main__":
+    main()
