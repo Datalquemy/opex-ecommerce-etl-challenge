@@ -1,0 +1,13 @@
+transaction_id,user_id,product_category,amount,date,user_id_num,amount_num
+T1006,2,Home & Garden,,2023-06-20,2,
+T1024,1,Electronics,,2024-03-15,1,
+T1048,5,Electronics,,2024-06-05,5,
+T1056,2,Electronics,,2024-06-25,2,
+T1066,1,Home & Garden,,2024-07-25,1,
+T1079,17,Electronics,,2024-09-03,17,
+T1093,10,Books,,2024-10-15,10,
+T1107,12,Home & Garden,,2024-11-22,12,
+T1117,7,Electronics,,2024-12-18,7,
+T1126,16,Books,,2025-01-10,16,
+T1137,12,Electronics,,2025-02-05,12,
+T1148,8,Fashion,,2025-02-28,8,
