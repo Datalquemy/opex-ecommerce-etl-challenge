@@ -50,7 +50,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pandas as pd
-
+DEBUG = True #cambiar a True para debug detallado de validación date_format
 
 # ---------- Paths ----------
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -63,7 +63,7 @@ REPORT_PATH = OUTPUT_DIR / "dq_report.txt"
 def load_transactions() -> pd.DataFrame:
     """Load transactions.csv"""
     path = DATA_DIR / "transactions.csv"
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, dtype={"date": "string"})
     print("CSV cargado ✅")
     print("Filas:", len(df))
     print("Columnas:", list(df.columns))
@@ -264,42 +264,63 @@ def validate_amount_numeric(df: pd.DataFrame) -> dict:
         "invalid_rows": invalid_rows,
     }
 
-
 def validate_date_format(df: pd.DataFrame) -> dict:
     total = len(df)
-    s = df["date"].astype(str).str.strip()
 
-    mask_null = df["date"].isna()
-    mask_empty = s.eq("")
+    s = df["date"].astype("string")
+    s = s.fillna("").str.strip()
+    s = s.str.slice(0, 10)
 
-    # DD/MM/YYYY o DD-MM-YYYY
-    pattern_dmy = r"^\d{2}[/-]\d{2}[/-]\d{4}$"
-    # YYYY/MM/DD o YYYY-MM-DD
-    pattern_ymd = r"^\d{4}[/-]\d{2}[/-]\d{2}$"
+    # Unificar separadores
+    s_norm = s.str.replace("-", "/", regex=False)
+    
+    if DEBUG:
+        print("DEBUG date dtype:", df["date"].dtype)
+        print("DEBUG sample raw dates:", df["date"].head(10).tolist())
+        print("DEBUG sample norm dates:", s_norm.head(10).tolist())
+        print("DEBUG value_counts of separators:")
+        print(
+        pd.Series({
+            "contains_slash": int(s.astype(str).str.contains("/").sum()),
+            "contains_dash": int(s.astype(str).str.contains("-").sum()),
+        })
+    )
+    mask_missing = s_norm.eq("")
 
-    mask_ok = s.str.match(pattern_dmy) | s.str.match(pattern_ymd)
-    mask_invalid = (~mask_null) & (~mask_empty) & (~mask_ok)
+    mask_dmy = s_norm.str.match(r"^\d{2}/\d{2}/\d{4}$")  # 25/01/2024
+    mask_ymd = s_norm.str.match(r"^\d{4}/\d{2}/\d{2}$")  # 2024/01/25
 
-    rejected_null_empty = int((mask_null | mask_empty).sum())
+    mask_ok = mask_dmy | mask_ymd
+    mask_invalid = (~mask_missing) & (~mask_ok)
+
+    count_dmy = int(mask_dmy.sum())
+    count_ymd = int(mask_ymd.sum())
+    rejected_null_empty = int(mask_missing.sum())
     rejected_bad_format = int(mask_invalid.sum())
     rejected = rejected_null_empty + rejected_bad_format
-    approved = int(total - rejected)
+    approved = total - rejected
 
-    invalid_rows = df.loc[(mask_null | mask_empty | mask_invalid), ["transaction_id", "date"]].to_dict(orient="records")
-
-    print("=== Validación date (formato) ===")
+    print("=== Validación date_format ===")
     print(f"Total: {total}")
     print(f"Aprobados: {approved}")
-    print(f"Rechazados total: {rejected}")
-    print(f" - Null/Empty: {rejected_null_empty}")
-    print(f" - Bad format: {rejected_bad_format}")
+    print(f"Rechazados: {rejected}  | Missing: {rejected_null_empty} | BadFormat: {rejected_bad_format}")
+    print(f"Detectados: DMY={count_dmy} | YMD={count_ymd}")
 
-    if rejected > 0:
-        print("\nInválidos (transaction_id, date) - top 10:")
-        print(df.loc[(mask_null | mask_empty | mask_invalid), ["transaction_id", "date"]].head(10))
-    else:
-        print("\n✅ Todas las fechas cumplen formato (DMY o YMD)")
+    print("\nEjemplos DMY (top 5):")
+    print(s_norm[mask_dmy].head(5).to_list())
 
+    print("\nEjemplos YMD (top 5):")
+    print(s_norm[mask_ymd].head(5).to_list())
+
+    if rejected_bad_format > 0:
+        print("\nEjemplos INVALID (top 10):")
+        print(df.loc[mask_invalid, ["transaction_id", "date"]].head(10))
+
+    invalid_rows = df.loc[mask_invalid | mask_missing, ["transaction_id", "date"]].to_dict(orient="records")
+    separator_counts = {
+    "contains_slash": int(s.astype(str).str.contains("/").sum()),
+    "contains_dash": int(s.astype(str).str.contains("-").sum()),
+                        }
     return {
         "check": "date_format",
         "total": total,
@@ -307,8 +328,12 @@ def validate_date_format(df: pd.DataFrame) -> dict:
         "rejected": rejected,
         "rejected_null_empty": rejected_null_empty,
         "rejected_bad_format": rejected_bad_format,
+        "count_dmy": count_dmy,
+        "count_ymd": count_ymd,
+        "separator_counts": separator_counts,
         "invalid_rows": invalid_rows,
     }
+
 def validate_users_json(df: pd.DataFrame) -> dict:
     total = len(df)
 
@@ -437,9 +462,14 @@ def main() -> None:
         elif check == "date_format":
             summary = (
                 f"Total({r['total']}), Aprobados({r['approved']}), Rechazados({r['rejected']}) | "
-                f"Null/Empty({r['rejected_null_empty']}), BadFormat({r['rejected_bad_format']})\n"
+                f"Null/Empty({r['rejected_null_empty']}), BadFormat({r['rejected_bad_format']}) | "
+                f"DMY({r['count_dmy']}), YMD({r['count_ymd']})\n"
             )
             lines = [summary]
+            lines.append("Separators:\n")
+            for k, v in r["separator_counts"].items():
+                lines.append(f" - {k}: {v}\n")
+                
             lines += write_invalid_rows("Invalid rows (transaction_id, date)", r["invalid_rows"])
             append_report_section(check, lines)
         elif check == "user_fk_exists":

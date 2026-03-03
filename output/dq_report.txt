@@ -40,7 +40,10 @@ Invalid rows (transaction_id, amount):
 
 ============================================================
 CHECK: date_format
-Total(150), Aprobados(150), Rechazados(0) | Null/Empty(0), BadFormat(0)
+Total(150), Aprobados(150), Rechazados(0) | Null/Empty(0), BadFormat(0) | DMY(0), YMD(150)
+Separators:
+ - contains_slash: 30
+ - contains_dash: 120
 
 ============================================================
 CHECK: user_fk_exists
