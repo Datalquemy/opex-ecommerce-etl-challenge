@@ -282,7 +282,68 @@ def validate_date_format(df: pd.DataFrame) -> dict:
         "rejected_bad_format": rejected_bad_format,
         "invalid_rows": invalid_rows,
     }
+def validate_users_json(df: pd.DataFrame) -> dict:
+    total = len(df)
 
+    # user_id numeric
+    user_num = pd.to_numeric(df["user_id"], errors="coerce")
+    mask_invalid_user_id = user_num.isna()
+
+    # duplicates
+    mask_duplicate = df.duplicated(subset=["user_id"], keep=False)
+
+    # metadata existence
+    mask_metadata_null = df["metadata"].isna()
+
+    # Expand metadata safely
+    metadata_df = pd.json_normalize(df["metadata"])
+
+    required_meta_fields = ["name", "country", "email"]
+    missing_meta_fields = [
+        col for col in required_meta_fields if col not in metadata_df.columns
+    ]
+
+    # email simple regex
+    email_pattern = r"^[^@]+@[^@]+\.[^@]+$"
+    mask_bad_email = ~metadata_df["email"].astype(str).str.match(email_pattern)
+
+    # signup_date parse
+    signup_parsed = pd.to_datetime(df["signup_date"], errors="coerce")
+    mask_bad_signup = signup_parsed.isna()
+
+    rejected = (
+        mask_invalid_user_id
+        | mask_duplicate
+        | mask_metadata_null
+        | mask_bad_email
+        | mask_bad_signup
+    )
+
+    rejected_count = int(rejected.sum())
+    approved = total - rejected_count
+
+    invalid_rows = df.loc[rejected, ["user_id", "signup_date"]].to_dict(orient="records")
+
+    print("=== Validación users.json ===")
+    print(f"Total: {total}")
+    print(f"Aprobados: {approved} | Rechazados: {rejected_count}")
+
+    if missing_meta_fields:
+        print("⚠ Faltan campos metadata:", missing_meta_fields)
+
+    if rejected_count > 0:
+        print("\nUsuarios inválidos (top 10):")
+        print(df.loc[rejected].head(10))
+    else:
+        print("\n✅ users.json válido")
+
+    return {
+        "check": "users_json_validation",
+        "total": total,
+        "approved": approved,
+        "rejected": rejected_count,
+        "invalid_rows": invalid_rows,
+    }
 
 # ---------- Main ----------
 def main() -> None:
@@ -293,7 +354,7 @@ def main() -> None:
 
     tx = load_transactions() 
     users = load_users()
-
+   
     results = []
     results.append(validate_transaction_id(tx))
     results.append(validate_user_id_numeric(tx))
@@ -301,6 +362,7 @@ def main() -> None:
     results.append(validate_amount_numeric(tx))
     results.append(validate_date_format(tx))
     results.append(validate_user_fk(tx, users))
+    results.append(validate_users_json(users))
 
     # Write report sections
     for r in results:
@@ -362,6 +424,15 @@ def main() -> None:
             lines = [summary]
             lines += write_invalid_rows("Invalid rows (transaction_id, user_id)", r["invalid_rows"])
             append_report_section(check, lines)
+        elif check == "users_json_validation":
+            summary = format_summary_line(
+            Total=r["total"],
+            Aprobados=r["approved"],
+            Rechazados=r["rejected"],
+            )
+            lines = [summary]
+            lines += write_invalid_rows("Invalid users", r["invalid_rows"])
+            append_report_section(check, lines)     
     print("\nReporte actualizado ✅:", REPORT_PATH)
 
 

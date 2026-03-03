@@ -45,3 +45,7 @@ Total(150), Aprobados(150), Rechazados(0) | Null/Empty(0), BadFormat(0)
 ============================================================
 CHECK: user_fk_exists
 Total(150), Aprobados(150), Rechazados(0)
+
+============================================================
+CHECK: users_json_validation
+Total(20), Aprobados(20), Rechazados(0)
