@@ -1,22 +1,49 @@
 """
-Control Plane - Data Quality Checks (transactions.csv)
+Control Plane - Source Data Quality Validation
 
 Qué hace:
-- Carga data/transactions.csv
+- Carga data/transactions.csv y data/user_data.json
 - Ejecuta validaciones (NO limpia datos):
-  1) transaction_id formato ^T\\d+$
-  2) user_id numérico (reporta inválidos con transaction_id)
-  3) product_category perfilado (categorías observadas + nulos/vacíos)
-  4) amount numérico (reporta inválidos con transaction_id)
-  5) date formato (acepta DMY o YMD con / o -; reporta inválidos con transaction_id)
-- Escribe/actualiza un reporte en output/dq_report.txt
+    1) transaction_id formato ^T\\d+$
+    2) user_id numérico
+    3) product_category perfilado (categorías observadas + nulos/vacíos)
+    4) amount numérico (reporta inválidos con transaction_id)
+    5) date formato (acepta DMY o YMD con / o -)
+    6) users.json validación interna (estructura, email, signup_date)
+    7) FK check: user_id en transactions existe en users.json
+- Genera un reporte limpio en output/dq_report.txt
+  (el archivo se reinicia en cada ejecución)
 
 Cómo correr:
-    python scripts/validate_transactions.py
+    python scripts/control_plane_validation.py
 
 Nota:
-- Este script es "control plane": solo reporta anomalías.
-- La limpieza/normalización se hará después en transform.py.
+- Este script representa el "Control Plane": solo detecta y reporta anomalías.
+- No realiza limpieza ni transformación de datos.
+- La normalización y preparación para carga SQL se implementará en transform.py.
+""""""
+Control Plane - Source Data Quality Validation
+
+Qué hace:
+- Carga data/transactions.csv y data/user_data.json
+- Ejecuta validaciones (NO limpia datos):
+    1) transaction_id formato ^T\\d+$
+    2) user_id numérico
+    3) product_category perfilado (categorías observadas + nulos/vacíos)
+    4) amount numérico (reporta inválidos con transaction_id)
+    5) date formato (acepta DMY o YMD con / o -)
+    6) users.json validación interna (estructura, email, signup_date)
+    7) FK check: user_id en transactions existe en users.json
+- Genera un reporte limpio en output/dq_report.txt
+  (el archivo se reinicia en cada ejecución)
+
+Cómo correr:
+    python scripts/control_plane_validation.py
+
+Nota:
+- Este script representa el "Control Plane": solo detecta y reporta anomalías.
+- No realiza limpieza ni transformación de datos.
+- La normalización y preparación para carga SQL se implementará en transform.py.
 """
 
 from __future__ import annotations
