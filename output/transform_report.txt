@@ -1,0 +1,15 @@
+TRANSFORM REPORT
+============================================================
+dim_users rows: 20
+fact_transactions rows: 150
+
+DATE PROFILE
+------------------------------------------------------------
+date_status counts: {'OK': 150}
+separator_counts: {'contains_slash': 30, 'contains_dash': 120}
+
+NULLS
+------------------------------------------------------------
+tx.user_id nulls: 0
+tx.amount nulls: 12
+fact missing user join (country null): 0
