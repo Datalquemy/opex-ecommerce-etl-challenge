@@ -49,6 +49,7 @@ Nota:
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime
 import pandas as pd
 DEBUG = True #cambiar a True para debug detallado de validación date_format
 
@@ -64,7 +65,7 @@ def load_transactions() -> pd.DataFrame:
     """Load transactions.csv"""
     path = DATA_DIR / "transactions.csv"
     df = pd.read_csv(path, dtype={"date": "string"})
-    print("CSV cargado ✅")
+    print("CSV cargado ")
     print("Filas:", len(df))
     print("Columnas:", list(df.columns))
     return df
@@ -387,7 +388,7 @@ def validate_users_json(df: pd.DataFrame) -> dict:
         print("\nUsuarios inválidos (top 10):")
         print(df.loc[rejected].head(10))
     else:
-        print("\n✅ users.json válido")
+        print("\n users.json válido")
 
     return {
         "check": "users_json_validation",
@@ -402,7 +403,13 @@ def main() -> None:
     # Reset report on each execution
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text("", encoding="utf-8")
-    print("Reporte reiniciado ✅")
+    print("Reporte reiniciado")
+    execution_time = f"Execution time: {datetime.now()}\n\n"
+    with open(REPORT_PATH, "a", encoding="utf-8") as f:
+        f.write("=" * 60 + "\n")
+        f.write("Execution Summary\n")
+        f.write(execution_time)
+        f.write("=" * 60 + "\n\n")
 
     tx = load_transactions() 
     users = load_users()
@@ -415,11 +422,11 @@ def main() -> None:
     results.append(validate_date_format(tx))
     results.append(validate_user_fk(tx, users))
     results.append(validate_users_json(users))
-
+   
     # Write report sections
+    
     for r in results:
         check = r["check"]
-
         # Summary line varies by check
         if check == "user_id_numeric":
             summary = format_summary_line(

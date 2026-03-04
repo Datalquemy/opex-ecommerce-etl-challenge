@@ -5,6 +5,7 @@ output/*.db
 output/*.parquet
 output/*.csv
 output/*.json
+output/*.txt
 
 # =========================
 # Python

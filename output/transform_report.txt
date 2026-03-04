@@ -1,5 +1,7 @@
 TRANSFORM REPORT
 ============================================================
+Execution time: 2026-03-04 14:20:53
+
 dim_users rows: 20
 fact_transactions rows: 150
 

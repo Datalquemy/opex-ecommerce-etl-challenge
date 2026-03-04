@@ -33,6 +33,7 @@ Notas:
 """
 
 import pandas as pd
+from datetime import datetime
 from pathlib import Path
 
 
@@ -212,6 +213,7 @@ def write_outputs(dim_users: pd.DataFrame, fact: pd.DataFrame, tx: pd.DataFrame)
     report_lines = []
     report_lines.append("TRANSFORM REPORT\n")
     report_lines.append("=" * 60 + "\n")
+    report_lines.append(f"Execution time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
     report_lines.append(f"dim_users rows: {len(dim_users)}\n")
     report_lines.append(f"fact_transactions rows: {len(fact)}\n\n")
 
@@ -223,7 +225,7 @@ def write_outputs(dim_users: pd.DataFrame, fact: pd.DataFrame, tx: pd.DataFrame)
     report_lines.append("-" * 60 + "\n")
     report_lines.append(f"amount nulls: {int(tx['amount'].isna().sum())}\n")
 
-    (OUTPUT_DIR / "transform_report.txt").write_text(
+    (OUTPUT_DIR / f"transform_report.txt").write_text(
         "".join(report_lines),
         encoding="utf-8",
     )
