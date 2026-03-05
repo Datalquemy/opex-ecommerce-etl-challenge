@@ -55,6 +55,7 @@ Esta separación permite:
 
 # Estructura del Proyecto
 
+```
 .
 ├── data/                  # Datos fuente (CSV / JSON)
 │
@@ -78,6 +79,7 @@ Esta separación permite:
 │
 ├── requirements.txt
 └── README.md
+```
 
 La carpeta **output/** se genera automáticamente al ejecutar el pipeline y está excluida del repositorio mediante `.gitignore`.
 
