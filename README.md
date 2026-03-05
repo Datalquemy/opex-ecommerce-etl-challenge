@@ -24,7 +24,7 @@ El objetivo es demostrar buenas prácticas de **ingeniería de datos**, incluyen
 # Arquitectura del Sistema
 
 El flujo de datos sigue la siguiente arquitectura lógica:
-
+```
 Raw Data Sources (CSV / JSON)
         │
         ▼
@@ -44,7 +44,7 @@ SQL Analytics Layer
         │
         ▼
 Power BI Dashboard
-
+```
 Esta separación permite:
 
 - detectar errores antes de procesar datos  
