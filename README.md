@@ -81,7 +81,7 @@ Esta separación permite:
 └── README.md
 ```
 
-La carpeta **output/** se genera automáticamente al ejecutar el pipeline y está excluida del repositorio mediante `.gitignore`.
+La carpeta **output/** se genera automáticamente al ejecutar el pipeline.
 
 ---
 
@@ -101,7 +101,6 @@ control_plane_validation.py
 
 Valida:
 
-- existencia de archivos fuente  
 - consistencia de esquemas  
 - tipos de datos esperados  
 - reglas básicas de integridad  
@@ -303,70 +302,49 @@ Estos archivos confirman que el pipeline se ejecutó correctamente y que el mode
 
 ---
 
-# Visualización en Power BI
+## Visualización en Power BI
 
-El warehouse SQLite generado por el pipeline se conecta a **Power BI mediante ODBC**, permitiendo construir un dashboard analítico interactivo.
+El *Analytical Warehouse* (`output/ecommerce.db`) se conecta a Power BI mediante **SQLite ODBC** para construir un dashboard ejecutivo e interactivo.
 
-El diseño del dashboard sigue principios de **UX para analítica de negocio**, utilizando una interfaz limpia con tarjetas flotantes, tipografía Segoe UI y una paleta de colores neutra.
+> Nota: El reporte puede abrirse para revisión y storytelling. Si el evaluador desea **refrescar** los datos desde `ecommerce.db`, entonces sí requerirá tener instalado el driver ODBC de SQLite y que exista el archivo `output/ecommerce.db` (generado al correr el pipeline).
 
----
+### Dashboard: *Ecommerce Performance Overview* (Dark Theme)
 
-# Dashboard: E-commerce Performance Overview
+El dashboard fue diseñado con enfoque de **storytelling ejecutivo** (lectura rápida de KPIs + desglose por clientes, geografía, categoría y tendencia temporal).
 
-El dashboard está estructurado en varias secciones para facilitar el análisis ejecutivo.
+#### 1) Filtros globales (Slicers)
+En la parte superior se incluyen filtros interactivos que afectan todas las visualizaciones:
+- **Country**
+- **Category**
 
-## 1. Filtros Globales
+#### 2) Indicadores clave (KPI Cards)
+Tres tarjetas resumen el estado del negocio:
+- **Total Revenue**: ingreso total generado por las transacciones.
+- **Transactions Count**: número total de transacciones registradas.
+- **Avg. Ticket (AOV)**: ticket promedio calculado como `Total Revenue / Transactions Count`.
 
-- Country  
-- Product Category  
+#### 3) Distribución geográfica
+Visualización tipo **mapa mundial con burbujas** (*Global Revenue Distribution*), útil para identificar:
+- presencia geográfica del negocio
+- concentración de ingresos/actividad por región
 
-Estos slicers afectan todas las visualizaciones del dashboard.
+#### 4) Clientes de alto valor
+Panel **Top 3 High-Value Customers** con gráfico de barras horizontal para destacar rápidamente los clientes con mayor gasto acumulado.
 
----
+#### 5) Ingresos por categoría
+Visualización **Revenue by Product Category** para comparar el desempeño por línea de producto y apoyar decisiones comerciales.
 
-## 2. Indicadores Clave (KPIs)
+#### 6) Tendencia temporal de ventas
+Gráfico **Monthly Sales Trend (2023–2025)** para observar:
+- estacionalidad
+- picos de ventas
+- cambios de comportamiento a lo largo del tiempo
 
-**Total Revenue**  
-Ingreso total generado por las transacciones.
+Archivo del reporte: `output/eCommerceReport.pbix` (entregado como artefacto final).
 
-**Total Transactions**  
-Número total de transacciones registradas.
+### Power BI Dashboard
 
-**Conversion %**  
-Porcentaje de conversión de usuarios a compradores.
-
----
-
-## 3. Análisis Geográfico
-
-Mapa mundial con burbujas que representa:
-
-- número de usuarios por país  
-- regiones con mayor o menor conversión  
-
----
-
-## 4. Top Premium Clients
-
-Panel que muestra los **Top 3 clientes con mayor gasto acumulado**, incluyendo:
-
-- nombre del usuario  
-- país  
-- total gastado  
-
----
-
-## 5. Seasonal Trend
-
-Gráfico de líneas que muestra la **tendencia de ingresos a lo largo del tiempo**.
-
-Permite identificar:
-
-- patrones estacionales  
-- picos de ventas  
-- cambios en el comportamiento del negocio  
-
----
+![Ecommerce Dashboard](output/figures/ecommercebi.png)
 
 # Objetivo del Dashboard
 
