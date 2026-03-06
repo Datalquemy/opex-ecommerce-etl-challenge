@@ -89,7 +89,7 @@ Esta separación permite:
 │   └── figures/
 │       ├── .gitkeep
 │       └── dtqOpexPorfolio.png   # Screenshot pagina web
-│       └── ecommercebi.png.png   # Screenshot principal del dashboard
+│       └── ecommercebi.png   # Screenshot principal del dashboard
 │
 ├── requirements.txt
 └── README.md
@@ -367,7 +367,7 @@ El dashboard está disponible en diferentes formatos para facilitar su revisión
 ### Versión Interactiva (Web)
 
 Ver dashboard en producción:  
-https://www.datalquemy.com
+http://www.datalquemy.com
 
 Visualización interactiva sin necesidad de instalar software.
 ### Vista previa
