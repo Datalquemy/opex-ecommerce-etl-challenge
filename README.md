@@ -57,25 +57,39 @@ Esta separación permite:
 
 ```
 .
-├── data/                  # Datos fuente (CSV / JSON)
+├── data/                         # Datos fuente (CSV / JSON)
 │
-├── scripts/               # Motor del pipeline
+├── scripts/                      # Motor del pipeline
 │   ├── control_plane_validation.py
 │   ├── transform.py
 │   ├── load.py
 │   └── run_pipeline.py
 │
-├── sql/                   # Consultas analíticas
+├── sql/                          # Consultas analíticas
 │   ├── 01_top_users.sql
 │   ├── 02_revenue_by_country.sql
 │   ├── 03_transactions_by_user.sql
 │   ├── 04_average_order_value.sql
 │   └── 05_data_quality_checks.sql
 │
-├── output/                # Artefactos generados (no versionados)
-│   ├── ecommerce.db
+├── output/                       # Resultados generados por el pipeline
+│   │
+│   ├── dim_users.csv
+│   ├── fact_transactions.csv
 │   ├── dq_report.txt
-│   └── transform_report.txt
+│   ├── transform_report.txt
+│   │
+│   ├── ecommerce.db              # SQLite analytical warehouse
+│   │
+│   ├── eCommerceReport.pbix      # Power BI report (archivo editable)
+│   ├── eCommerceReport.pdf       # Versión exportada del dashboard
+│   │
+│   ├── dashboard_screenshots/    # Capturas adicionales del dashboard
+│   │
+│   └── figures/
+│       ├── .gitkeep
+│       └── dtqOpexPorfolio.png   # Screenshot pagina web
+│       └── ecommercebi.png.png   # Screenshot principal del dashboard
 │
 ├── requirements.txt
 └── README.md
@@ -345,6 +359,32 @@ Archivo del reporte: `output/eCommerceReport.pbix` (entregado como artefacto fin
 ### Power BI Dashboard
 
 ![Ecommerce Dashboard](output/figures/ecommercebi.png)
+
+## Acceso al Reporte (Live & Offline)
+
+El dashboard está disponible en diferentes formatos para facilitar su revisión.
+
+### Versión Interactiva (Web)
+
+Ver dashboard en producción:  
+https://www.datalquemy.com
+
+Visualización interactiva sin necesidad de instalar software.
+### Vista previa
+
+![Web Ecommerce Dashboard](output/figures/dtqOpexPorfolio.png)
+
+
+### Archivo de Origen (Power BI)
+
+`output/eCommerceReport.pbix`
+
+Permite abrir el modelo directamente en Power BI Desktop.
+>Nota: Se debe tener la última actualización
+
+### Versión Pdf
+
+El archivo esta en formato pdf disponible en output/eCommerceReport.pdf
 
 # Objetivo del Dashboard
 
